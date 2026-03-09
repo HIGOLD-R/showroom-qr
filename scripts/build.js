@@ -398,8 +398,8 @@ body {
 .meta { margin-top: 12px; font-size: 13px; color: #64748b; }
 @media (max-width: 640px) {
   body { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
-  .name-en { font-size: 30px; }
-  .unit .v { font-size: 39px; }
+  .name-en { font-size: 27px; }
+  .unit .v { font-size: 34px; }
   .box-price .v { font-size: 29px; }
 }
 `;
