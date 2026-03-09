@@ -1,0 +1,28 @@
+{
+  "productsCsvUrl": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQy1rQpxScILB8tx_zg6gFHVkAJVmayrrXGCNQJ7GqdPhEhldB-gmEdkio4pSZeVAhG1lr0aI5CMrkJ/pub?gid=0&single=true&output=csv",
+  "imagesCsvUrl": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQy1rQpxScILB8tx_zg6gFHVkAJVmayrrXGCNQJ7GqdPhEhldB-gmEdkio4pSZeVAhG1lr0aI5CMrkJ/pub?gid=1050024024&single=true&output=csv",
+  "siteBaseUrl": "https://<github-username>.github.io/<repo>",
+  "outputDir": "dist",
+  "productFields": {
+    "id": "ITEM NO.",
+    "name": "NAME",
+    "nameAz": "NAME AZ",
+    "boxPrice": "BOX PRICE",
+    "retailPrice": "RETAIL PRICE",
+    "manufacturer": "MANUFACTURER",
+    "features": "FEATURES",
+    "innerMeasures": "INNER MEASURES",
+    "outerMeasures": "OUTER MEASURES",
+    "description": "DESCRIPTION",
+    "status": "Status / Status",
+    "active": "ACTIVE",
+    "updatedAt": "UPDATED_AT"
+  },
+  "imageFields": {
+    "id": "ITEM NO.",
+    "imageUrl": "image_url",
+    "isMain": "is_main",
+    "sortOrder": "sort_order",
+    "active": "active"
+  }
+}

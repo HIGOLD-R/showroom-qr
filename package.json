@@ -1,0 +1,12 @@
+{
+  "name": "showroom-qr",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.js"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.1"
+  }
+}
