@@ -30,25 +30,25 @@ const DEFAULT_IMAGE_FIELDS = {
 };
 
 const PRODUCT_ALIASES = {
-  id: ["ITEM NO.", "item no", "item no.", "product_id", "id", "Код товара"],
-  name: ["NAME", "name", "English name", "Название EN"],
-  nameAz: ["NAME AZ", "name az", "Название AZ"],
-  boxPrice: ["BOX PRICE", "box price", "box_price", "Оптовая цена"],
-  retailPrice: ["RETAIL PRICE", "retail price", "retail_price", "Розничная цена"],
-  manufacturer: ["MANUFACTURER", "manufacturer", "brand", "Бренд"],
-  features: ["FEATURES", "features", "feature", "Характеристика", "Характеристики"],
-  innerMeasures: ["INNER MEASURES", "inner measures", "Внутренние размеры"],
-  outerMeasures: ["OUTER MEASURES", "outer measures", "Внешние размеры"],
-  description: ["DESCRIPTION", "description", "Описание"],
-  status: ["Status / Status", "status", "Stock status", "Наличие"],
-  active: ["ACTIVE", "active", "Активный"],
-  updatedAt: ["UPDATED_AT", "updated_at", "updated at", "Обновлено"],
+  id: ["ITEM NO.", "item no", "item no.", "product_id", "id"],
+  name: ["NAME", "name", "English name"],
+  nameAz: ["NAME AZ", "name az"],
+  boxPrice: ["BOX PRICE", "box price", "box_price"],
+  retailPrice: ["RETAIL PRICE", "retail price", "retail_price"],
+  manufacturer: ["MANUFACTURER", "manufacturer", "brand"],
+  features: ["FEATURES", "features", "feature"],
+  innerMeasures: ["INNER MEASURES", "inner measures"],
+  outerMeasures: ["OUTER MEASURES", "outer measures"],
+  description: ["DESCRIPTION", "description"],
+  status: ["Status / Status", "status", "Stock status"],
+  active: ["ACTIVE", "active"],
+  updatedAt: ["UPDATED_AT", "updated_at", "updated at"],
 };
 
 const IMAGE_ALIASES = {
-  id: ["ITEM NO.", "item no", "item no.", "product_id", "id", "Код товара"],
-  imageUrl: ["image_url", "image url", "url", "link", "Прямая ссылка", "Ссылка", "Image"],
-  isMain: ["is_main", "ismain", "main", "Главное фото", "IS_MAIN"],
+  id: ["ITEM NO.", "item no", "item no.", "product_id", "id"],
+  imageUrl: ["image_url", "image url", "url", "link", "image"],
+  isMain: ["is_main", "ismain", "main", "IS_MAIN"],
   sortOrder: ["sort_order", "sort order", "order", "SORT_ORDER"],
   active: ["active", "ACTIVE"],
 };
@@ -109,7 +109,7 @@ function parseCsv(text) {
 
 function rowsToObjects(rows) {
   if (rows.length < 2) return [];
-  const headers = rows[0].map((h) => String(h || "").trim());
+  const headers = rows[0].map((h) => String(h || "").replace(/^\uFEFF/, "").trim());
   return rows.slice(1).map((row) => {
     const out = {};
     headers.forEach((header, idx) => {
@@ -124,20 +124,23 @@ function normalizeKey(value) {
     .trim()
     .toLowerCase()
     .replace(/[\s._/-]+/g, "")
-    .replace(/[()]/g, "");
+    .replace(/[()]/g, "")
+    .replace(/\uFEFF/g, "");
 }
 
 function getByAliases(row, aliases) {
   for (const key of aliases) {
     if (Object.prototype.hasOwnProperty.call(row, key)) {
-      return String(row[key] ?? "").trim();
+      const value = String(row[key] ?? "").trim();
+      if (value) return value;
     }
   }
 
   const aliasSet = new Set(aliases.map(normalizeKey));
-  for (const [key, value] of Object.entries(row)) {
+  for (const [key, valueRaw] of Object.entries(row)) {
     if (aliasSet.has(normalizeKey(key))) {
-      return String(value ?? "").trim();
+      const value = String(valueRaw ?? "").trim();
+      if (value) return value;
     }
   }
   return "";
@@ -146,7 +149,7 @@ function getByAliases(row, aliases) {
 function cleanItemNo(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
-  return raw.replace(/^(копия|copy)\s+/i, "").trim();
+  return raw.replace(/^(?:copy|\u043A\u043E\u043F\u0438\u044F)\s+/iu, "").trim();
 }
 
 function escapeHtml(value) {
@@ -215,14 +218,17 @@ function normalizeImageUrl(url) {
   const raw = String(url || "").trim();
   if (!raw) return "";
 
-  const fileDMatch = raw.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
-  if (fileDMatch) {
-    return `https://drive.google.com/uc?export=view&id=${fileDMatch[1]}`;
-  }
+  const getDriveId = (value) => {
+    const fileDMatch = value.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+    if (fileDMatch) return fileDMatch[1];
+    const openIdMatch = value.match(/[?&]id=([^&]+)/i);
+    if (openIdMatch) return openIdMatch[1];
+    return "";
+  };
 
-  const openIdMatch = raw.match(/[?&]id=([^&]+)/i);
-  if (openIdMatch && raw.includes("drive.google.com")) {
-    return `https://drive.google.com/uc?export=view&id=${openIdMatch[1]}`;
+  const driveId = getDriveId(raw);
+  if (driveId) {
+    return `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600`;
   }
 
   return raw;
@@ -448,8 +454,18 @@ async function build() {
 
   const imagesById = new Map();
   for (const row of imageRows) {
-    const productId = cleanItemNo(getByAliases(row, [imageFields.id, ...IMAGE_ALIASES.id]));
-    const imageUrlRaw = getByAliases(row, [imageFields.imageUrl, ...IMAGE_ALIASES.imageUrl]);
+    const rowValues = Object.values(row).map((v) => String(v || "").trim());
+
+    let productId = cleanItemNo(getByAliases(row, [imageFields.id, ...IMAGE_ALIASES.id]));
+    if (!productId && rowValues.length > 0) {
+      productId = cleanItemNo(rowValues[0]);
+    }
+
+    let imageUrlRaw = getByAliases(row, [imageFields.imageUrl, ...IMAGE_ALIASES.imageUrl]);
+    if (!imageUrlRaw && rowValues.length > 1) {
+      imageUrlRaw = rowValues[1];
+    }
+
     const imageUrl = normalizeImageUrl(imageUrlRaw);
     if (!productId || !imageUrl) continue;
     const record = {
@@ -550,14 +566,13 @@ async function build() {
     await writeFile(path.join(outputDir, "qr", `${encodeURIComponent(product.url_id)}.svg`), qrSvg);
 
     const mainImageHtml = product.image_main
-      ? `<img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" />`
+      ? `<img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" referrerpolicy="no-referrer" loading="eager" onerror="if(!this.dataset.f){const m=this.src.match(/[?&]id=([^&]+)/);if(m){this.dataset.f='1';this.src='https://drive.google.com/uc?export=view&id='+m[1];}}" />`
       : "<div style=\"color:#9ca3af;font-weight:600;display:grid;place-items:center;width:100%;height:100%;\">No image</div>";
 
     const specRows = [
       ["Features", product.features],
       ["Inner Measures", product.inner_measures],
       ["Outer Measures", product.outer_measures],
-      ["Manufacturer", product.manufacturer],
     ]
       .filter(([, value]) => String(value || "").trim() !== "")
       .map(([k, v]) => `<div class="spec-row"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(v)}</span></div>`)
