@@ -29,6 +29,30 @@ const DEFAULT_IMAGE_FIELDS = {
   active: "active",
 };
 
+const PRODUCT_ALIASES = {
+  id: ["ITEM NO.", "item no", "item no.", "product_id", "id", "Код товара"],
+  name: ["NAME", "name", "English name", "Название EN"],
+  nameAz: ["NAME AZ", "name az", "Название AZ"],
+  boxPrice: ["BOX PRICE", "box price", "box_price", "Оптовая цена"],
+  retailPrice: ["RETAIL PRICE", "retail price", "retail_price", "Розничная цена"],
+  manufacturer: ["MANUFACTURER", "manufacturer", "brand", "Бренд"],
+  features: ["FEATURES", "features", "feature", "Характеристика", "Характеристики"],
+  innerMeasures: ["INNER MEASURES", "inner measures", "Внутренние размеры"],
+  outerMeasures: ["OUTER MEASURES", "outer measures", "Внешние размеры"],
+  description: ["DESCRIPTION", "description", "Описание"],
+  status: ["Status / Status", "status", "Stock status", "Наличие"],
+  active: ["ACTIVE", "active", "Активный"],
+  updatedAt: ["UPDATED_AT", "updated_at", "updated at", "Обновлено"],
+};
+
+const IMAGE_ALIASES = {
+  id: ["ITEM NO.", "item no", "item no.", "product_id", "id", "Код товара"],
+  imageUrl: ["image_url", "image url", "url", "link", "Прямая ссылка", "Ссылка", "Image"],
+  isMain: ["is_main", "ismain", "main", "Главное фото", "IS_MAIN"],
+  sortOrder: ["sort_order", "sort order", "order", "SORT_ORDER"],
+  active: ["active", "ACTIVE"],
+};
+
 function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -70,9 +94,7 @@ function parseCsv(text) {
       continue;
     }
 
-    if (ch === '\r') {
-      continue;
-    }
+    if (ch === '\r') continue;
 
     value += ch;
   }
@@ -95,6 +117,36 @@ function rowsToObjects(rows) {
     });
     return out;
   });
+}
+
+function normalizeKey(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s._/-]+/g, "")
+    .replace(/[()]/g, "");
+}
+
+function getByAliases(row, aliases) {
+  for (const key of aliases) {
+    if (Object.prototype.hasOwnProperty.call(row, key)) {
+      return String(row[key] ?? "").trim();
+    }
+  }
+
+  const aliasSet = new Set(aliases.map(normalizeKey));
+  for (const [key, value] of Object.entries(row)) {
+    if (aliasSet.has(normalizeKey(key))) {
+      return String(value ?? "").trim();
+    }
+  }
+  return "";
+}
+
+function cleanItemNo(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return raw.replace(/^(копия|copy)\s+/i, "").trim();
 }
 
 function escapeHtml(value) {
@@ -159,6 +211,23 @@ function compareImageRecords(a, b) {
   return a.sortOrder - b.sortOrder;
 }
 
+function normalizeImageUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+
+  const fileDMatch = raw.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if (fileDMatch) {
+    return `https://drive.google.com/uc?export=view&id=${fileDMatch[1]}`;
+  }
+
+  const openIdMatch = raw.match(/[?&]id=([^&]+)/i);
+  if (openIdMatch && raw.includes("drive.google.com")) {
+    return `https://drive.google.com/uc?export=view&id=${openIdMatch[1]}`;
+  }
+
+  return raw;
+}
+
 async function ensureCleanOutput(outputDir) {
   await fs.rm(outputDir, { recursive: true, force: true });
   await fs.mkdir(path.join(outputDir, "data"), { recursive: true });
@@ -189,85 +258,76 @@ ${body}
 
 const PRODUCT_CSS = `
 :root {
-  --bg: #f1f3f8;
+  --bg: #eceff4;
   --card: #ffffff;
-  --ink: #111827;
+  --ink: #0f172a;
   --muted: #6b7280;
-  --line: #e6e8ee;
-  --ok-bg: #2ea96a;
-  --ok-ink: #ffffff;
-  --price: #0f172a;
-  --box-bg: #fff8e7;
-  --box-line: #f2d89a;
-  --box-ink: #7c4d00;
+  --line: #e5e7eb;
+  --ok: #22a26d;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: linear-gradient(180deg, #ebedf4 0%, #f7f8fc 100%);
+  background: radial-gradient(1200px 600px at top left, #f5f7fb, #e7ebf3);
   font-family: "Segoe UI", Tahoma, sans-serif;
   color: var(--ink);
-  padding: 18px;
+  padding: 20px;
 }
-.wrap {
-  max-width: 560px;
-  margin: 0 auto;
-}
+.wrap { max-width: 560px; margin: 0 auto; }
 .card {
   background: var(--card);
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 16px 36px rgba(17, 24, 39, 0.12);
-  border: 1px solid rgba(17, 24, 39, 0.05);
+  box-shadow: 0 20px 38px rgba(2, 6, 23, 0.16);
+  border: 1px solid rgba(15, 23, 42, 0.06);
 }
 .media {
   position: relative;
-  background: #0f1117;
-  min-height: 340px;
-  display: grid;
-  place-items: center;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(160deg, #10131b, #1b1f2a);
+  overflow: hidden;
 }
-.media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  min-height: 340px;
-}
+.media img { width: 100%; height: 100%; object-fit: cover; }
 .status {
   position: absolute;
   top: 14px;
   right: 14px;
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 999px;
-  font-size: 14px;
+  padding: 8px 14px;
   font-weight: 700;
-  background: #f3f4f6;
-  color: #111827;
+  font-size: 14px;
+  backdrop-filter: blur(6px);
+  color: #fff;
+  background: rgba(107, 114, 128, 0.85);
 }
-.status.in_stock { background: var(--ok-bg); color: var(--ok-ink); }
-.status.out_of_stock { background: #ef4444; color: #fff; }
-.status.preorder, .status.on_request, .status.unknown { background: #f59e0b; color: #fff; }
-.content { padding: 18px 20px 20px; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.status.in_stock { background: rgba(34, 162, 109, 0.92); }
+.status.out_of_stock { background: rgba(220, 38, 38, 0.92); }
+.status.preorder, .status.on_request, .status.unknown { background: rgba(202, 138, 4, 0.92); }
+.content { padding: 20px; }
 .brand {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
 }
 .name-en {
-  margin: 8px 0 4px;
-  font-size: 39px;
-  line-height: 1.06;
-  font-weight: 800;
+  margin: 10px 0 4px;
+  font-size: 40px;
+  line-height: 1.04;
+  font-weight: 900;
 }
 .name-az {
   margin: 0;
-  color: #4b5563;
+  color: #475569;
   font-size: 16px;
-  line-height: 1.35;
   font-weight: 600;
+  line-height: 1.35;
 }
 .desc {
   margin: 12px 0 0;
@@ -276,59 +336,40 @@ body {
   white-space: pre-wrap;
 }
 .sec-title {
-  margin: 18px 0 10px;
-  color: var(--muted);
-  letter-spacing: 0.08em;
+  margin: 20px 0 10px;
+  color: #6b7280;
   font-size: 13px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
 }
-.spec-list {
-  display: grid;
-  gap: 8px;
-}
+.spec-list { display: grid; gap: 8px; }
 .spec-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
   align-items: center;
-  border: 1px solid var(--line);
-  background: #fafbff;
-  border-radius: 12px;
-  padding: 10px 12px;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #edf0f5;
+  border-radius: 10px;
+  padding: 11px 12px;
 }
-.spec-row .k { color: #374151; }
-.spec-row .v { color: #0f172a; font-weight: 700; text-align: right; }
-.divider {
-  margin: 18px 0;
-  border-top: 1px solid var(--line);
-}
-.pricing {
-  display: grid;
-  gap: 12px;
-}
-.unit {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
+.spec-row .k { color: #4b5563; font-size: 14px; }
+.spec-row .v { color: #0f172a; font-size: 15px; font-weight: 800; }
+.divider { margin: 18px 0; border-top: 1px solid var(--line); }
+.pricing { display: grid; gap: 12px; }
+.unit { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .unit .l {
-  color: var(--muted);
-  letter-spacing: 0.08em;
+  color: #6b7280;
   text-transform: uppercase;
+  letter-spacing: 0.1em;
   font-size: 13px;
   font-weight: 700;
 }
-.unit .v {
-  color: var(--price);
-  font-size: 46px;
-  font-weight: 900;
-  line-height: 1;
-}
+.unit .v { font-size: 50px; line-height: 1; font-weight: 900; color: #0b1325; }
 .box-price {
-  border: 1px solid var(--box-line);
-  background: var(--box-bg);
+  border: 1px solid #f2d48f;
+  background: linear-gradient(160deg, #fff9eb, #fff4db);
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;
@@ -337,40 +378,27 @@ body {
   gap: 10px;
 }
 .box-price .l {
-  color: var(--box-ink);
-  font-weight: 800;
+  color: #7a4a00;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 14px;
-}
-.box-price .hint {
-  color: var(--box-ink);
-  opacity: 0.85;
+  letter-spacing: 0.08em;
   font-size: 13px;
+  font-weight: 800;
 }
-.box-price .v {
-  color: var(--box-ink);
-  font-size: 33px;
-  font-weight: 900;
-  line-height: 1;
-}
-.meta {
-  margin-top: 12px;
-  color: #6b7280;
-  font-size: 13px;
-}
+.box-price .hint { color: #955f0a; font-size: 12px; margin-top: 2px; }
+.box-price .v { color: #7a4a00; font-size: 34px; line-height: 1; font-weight: 900; }
+.meta { margin-top: 12px; font-size: 13px; color: #64748b; }
 @media (max-width: 640px) {
   body { padding: 10px; }
-  .name-en { font-size: 29px; }
-  .unit .v { font-size: 36px; }
-  .box-price .v { font-size: 28px; }
+  .name-en { font-size: 30px; }
+  .unit .v { font-size: 39px; }
+  .box-price .v { font-size: 29px; }
 }
 `;
 
 const ADMIN_CSS = `
 * { box-sizing: border-box; }
 body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: #f7f8fb; color: #111827; }
-.main { max-width: 1100px; margin: 0 auto; padding: 20px 14px 28px; }
+.main { max-width: 1120px; margin: 0 auto; padding: 20px 14px 28px; }
 .head { display: flex; justify-content: space-between; align-items: end; gap: 10px; margin-bottom: 14px; }
 .h1 { margin: 0; font-size: 28px; }
 .sub { color: #6b7280; font-size: 14px; margin-top: 4px; }
@@ -420,14 +448,15 @@ async function build() {
 
   const imagesById = new Map();
   for (const row of imageRows) {
-    const productId = String(row[imageFields.id] || "").trim();
-    const imageUrl = String(row[imageFields.imageUrl] || "").trim();
+    const productId = cleanItemNo(getByAliases(row, [imageFields.id, ...IMAGE_ALIASES.id]));
+    const imageUrlRaw = getByAliases(row, [imageFields.imageUrl, ...IMAGE_ALIASES.imageUrl]);
+    const imageUrl = normalizeImageUrl(imageUrlRaw);
     if (!productId || !imageUrl) continue;
     const record = {
       url: imageUrl,
-      isMain: toBoolean(row[imageFields.isMain], false),
-      sortOrder: Number.parseInt(row[imageFields.sortOrder], 10) || 999,
-      active: toBoolean(row[imageFields.active], true),
+      isMain: toBoolean(getByAliases(row, [imageFields.isMain, ...IMAGE_ALIASES.isMain]), false),
+      sortOrder: Number.parseInt(getByAliases(row, [imageFields.sortOrder, ...IMAGE_ALIASES.sortOrder]), 10) || 999,
+      active: toBoolean(getByAliases(row, [imageFields.active, ...IMAGE_ALIASES.active]), true),
     };
     if (!record.active) continue;
     const current = imagesById.get(productId) || [];
@@ -441,7 +470,7 @@ async function build() {
   const products = [];
 
   for (const row of productRows) {
-    const sourceId = String(row[productFields.id] || "").trim();
+    const sourceId = cleanItemNo(getByAliases(row, [productFields.id, ...PRODUCT_ALIASES.id]));
     if (!sourceId) {
       warnings.push("Skipped row with empty ITEM NO.");
       continue;
@@ -457,7 +486,7 @@ async function build() {
     seenUrlIds.set(urlBase, urlIndex);
     const urlId = urlIndex === 1 ? urlBase : `${urlBase}--${urlIndex}`;
 
-    const active = toBoolean(row[productFields.active], true);
+    const active = toBoolean(getByAliases(row, [productFields.active, ...PRODUCT_ALIASES.active]), true);
     if (!active) continue;
 
     const images = (imagesById.get(sourceId) || []).sort(compareImageRecords);
@@ -467,19 +496,19 @@ async function build() {
       source_item_no: sourceId,
       item_no: sourceId,
       url_id: urlId,
-      name: String(row[productFields.name] || "").trim(),
-      name_az: String(row[productFields.nameAz] || "").trim(),
-      box_price: parseMoney(row[productFields.boxPrice]),
-      retail_price: parseMoney(row[productFields.retailPrice]),
+      name: getByAliases(row, [productFields.name, ...PRODUCT_ALIASES.name]),
+      name_az: getByAliases(row, [productFields.nameAz, ...PRODUCT_ALIASES.nameAz]),
+      box_price: parseMoney(getByAliases(row, [productFields.boxPrice, ...PRODUCT_ALIASES.boxPrice])),
+      retail_price: parseMoney(getByAliases(row, [productFields.retailPrice, ...PRODUCT_ALIASES.retailPrice])),
       currency: "AZN",
-      manufacturer: String(row[productFields.manufacturer] || "").trim(),
-      features: String(row[productFields.features] || "").trim(),
-      inner_measures: String(row[productFields.innerMeasures] || "").trim(),
-      outer_measures: String(row[productFields.outerMeasures] || "").trim(),
-      description: String(row[productFields.description] || "").trim(),
-      stock_status: normalizeStockStatus(row[productFields.status]),
-      stock_label: String(row[productFields.status] || "").trim(),
-      updated_at: String(row[productFields.updatedAt] || "").trim(),
+      manufacturer: getByAliases(row, [productFields.manufacturer, ...PRODUCT_ALIASES.manufacturer]),
+      features: getByAliases(row, [productFields.features, ...PRODUCT_ALIASES.features]),
+      inner_measures: getByAliases(row, [productFields.innerMeasures, ...PRODUCT_ALIASES.innerMeasures]),
+      outer_measures: getByAliases(row, [productFields.outerMeasures, ...PRODUCT_ALIASES.outerMeasures]),
+      description: getByAliases(row, [productFields.description, ...PRODUCT_ALIASES.description]),
+      stock_status: normalizeStockStatus(getByAliases(row, [productFields.status, ...PRODUCT_ALIASES.status])),
+      stock_label: getByAliases(row, [productFields.status, ...PRODUCT_ALIASES.status]),
+      updated_at: getByAliases(row, [productFields.updatedAt, ...PRODUCT_ALIASES.updatedAt]),
       active: true,
       images: images.map((item) => item.url),
       image_main: images.length ? images[0].url : "",
@@ -522,10 +551,9 @@ async function build() {
 
     const mainImageHtml = product.image_main
       ? `<img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" />`
-      : "<div style=\"color:#9ca3af;font-weight:600;\">No image</div>";
+      : "<div style=\"color:#9ca3af;font-weight:600;display:grid;place-items:center;width:100%;height:100%;\">No image</div>";
 
     const specRows = [
-      ["Item No", product.item_no],
       ["Features", product.features],
       ["Inner Measures", product.inner_measures],
       ["Outer Measures", product.outer_measures],
@@ -549,6 +577,10 @@ async function build() {
         </div>`
       : "";
 
+    const featuresSection = specRows
+      ? `<h3 class="sec-title">Features</h3><div class="spec-list">${specRows}</div>`
+      : "";
+
     const productHtml = renderPage(
       `${product.product_id} - ${product.name}`,
       `<div class="wrap">
@@ -562,11 +594,8 @@ async function build() {
       <h1 class="name-en">${escapeHtml(product.name || product.product_id)}</h1>
       ${nameAzHtml}
       ${descriptionHtml}
-
-      ${specRows ? `<h3 class="sec-title">Features</h3><div class="spec-list">${specRows}</div>` : ""}
-
+      ${featuresSection}
       <div class="divider"></div>
-
       <div class="pricing">
         <div class="unit">
           <div class="l">Unit Price</div>
@@ -574,7 +603,6 @@ async function build() {
         </div>
         ${boxPriceHtml}
       </div>
-
       <div class="meta">Product ID: ${escapeHtml(product.product_id)}</div>
     </div>
   </article>
