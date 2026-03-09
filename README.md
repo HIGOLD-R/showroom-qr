@@ -6,7 +6,7 @@ Static generator for product cards and QR codes.
 - `dist/data/products.json` - normalized products from Google Sheets
 - `dist/p/<product_id>/index.html` - product pages
 - `dist/qr/<product_id>.svg` - QR files for print
-- `dist/index.html` - product list
+- `dist/index.html` - minimal landing page (no public catalog)
 
 ## Data source
 Two published CSV links from one Google Spreadsheet:
@@ -73,3 +73,4 @@ After first push:
 - Public site uses only status, not exact stock quantity.
 - Product URL is stable and based on `ITEM NO.`.
 - If one item has multiple images, main image is selected by `is_main`, then `sort_order`.
+

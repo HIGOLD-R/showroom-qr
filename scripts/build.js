@@ -308,32 +308,14 @@ async function build() {
   await ensureCleanOutput(outputDir);
 
   const cleanBase = String(config.siteBaseUrl || "").replace(/\/+$/, "");
-  await writeFile(path.join(outputDir, "data", "products.json"), JSON.stringify(products, null, 2));
-
-  const indexCards = products
-    .map((product) => {
-      const productPath = `p/${encodeURIComponent(product.url_id)}/`;
-      const productUrl = `${cleanBase}/${productPath}`;
-      const priceText = product.retail_price == null ? "Price on request" : `${product.retail_price.toFixed(2)} ${product.currency}`;
-      const imageHtml = product.image_main
-        ? `<div class="image-wrap"><img loading="lazy" src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`
-        : "";
-      return `<article class="card">
-  ${imageHtml}
-  <h2>${escapeHtml(product.name || product.product_id)}</h2>
-  <div class="meta">${escapeHtml(product.product_id)}</div>
-  <div class="price">${escapeHtml(priceText)}</div>
-  <div class="status ${escapeHtml(product.stock_status)}">${escapeHtml(product.stock_label || product.stock_status)}</div>
-  <p class="actions"><a href="${escapeHtml(productPath)}">Open card</a></p>
-  <p class="actions"><a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener">Public URL</a></p>
-</article>`;
-    })
-    .join("\n");
-
-  const indexHtml = renderLayout({
+  await writeFile(path.join(outputDir, "data", "products.json"), JSON.stringify(products, null, 2));  const indexHtml = renderLayout({
     title: "HIGOLD Showroom",
     homeHref: "./index.html",
-    body: `<section class="grid">${indexCards}</section>`,
+    body: `<section class="card">
+  <h1>HIGOLD Showroom</h1>
+  <p>This landing page is intentionally minimal.</p>
+  <p>Use product QR code to open a specific product card.</p>
+</section>`,
   });
 
   await writeFile(path.join(outputDir, "index.html"), indexHtml);
