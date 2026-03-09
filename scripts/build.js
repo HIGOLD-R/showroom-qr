@@ -56,13 +56,13 @@ function parseCsv(text) {
       continue;
     }
 
-    if (ch === ",") {
+    if (ch === ',') {
       row.push(value);
       value = "";
       continue;
     }
 
-    if (ch === "\n") {
+    if (ch === '\n') {
       row.push(value);
       rows.push(row);
       row = [];
@@ -70,7 +70,7 @@ function parseCsv(text) {
       continue;
     }
 
-    if (ch === "\r") {
+    if (ch === '\r') {
       continue;
     }
 
@@ -106,12 +106,25 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function csvEscape(value) {
+  const s = String(value ?? "");
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 function parseMoney(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
   const normalized = raw.replace(/\s+/g, "").replace(",", ".");
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatMoney(value, currency = "AZN") {
+  if (value == null) return "";
+  return `${value.toFixed(2)} ${currency}`;
 }
 
 function toBoolean(value, fallback = true) {
@@ -151,6 +164,7 @@ async function ensureCleanOutput(outputDir) {
   await fs.mkdir(path.join(outputDir, "data"), { recursive: true });
   await fs.mkdir(path.join(outputDir, "p"), { recursive: true });
   await fs.mkdir(path.join(outputDir, "qr"), { recursive: true });
+  await fs.mkdir(path.join(outputDir, "admin", "qr"), { recursive: true });
 }
 
 async function writeFile(filePath, content) {
@@ -158,311 +172,222 @@ async function writeFile(filePath, content) {
   await fs.writeFile(filePath, content, "utf8");
 }
 
-function renderLayout({ title, body, homeHref }) {
-  const generatedAt = new Date().toISOString();
+function renderPage(title, body, css) {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
-  <style>
-    :root {
-      --bg: #efe9db;
-      --bg2: #e4dbc8;
-      --surface: #fffdf7;
-      --ink: #1f1e1a;
-      --muted: #6f6b60;
-      --line: #e1d7bf;
-      --accent: #206a4f;
-      --accent-2: #124131;
-      --good-bg: #e4f6e8;
-      --good-line: #bee1c5;
-      --good-text: #18552a;
-      --bad-bg: #fbe4e4;
-      --bad-line: #f0c2c2;
-      --bad-text: #7e2323;
-      --warm-bg: #fff3db;
-      --warm-line: #efd9a7;
-      --warm-text: #785400;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at 8% 0%, rgba(255,255,255,0.5), transparent 32%),
-        linear-gradient(180deg, var(--bg2), var(--bg));
-      min-height: 100vh;
-    }
-
-    .page {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 22px 14px 36px;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-      gap: 8px;
-    }
-
-    .brand {
-      color: var(--ink);
-      text-decoration: none;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      font-size: 30px;
-    }
-
-    .stamp {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: right;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: 0 10px 26px rgba(66, 54, 25, 0.08);
-    }
-
-    .landing {
-      padding: 26px;
-    }
-
-    .landing h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
-
-    .landing p {
-      margin: 6px 0;
-      color: var(--muted);
-    }
-
-    .product-shell {
-      display: grid;
-      grid-template-columns: 1.05fr 1fr;
-      gap: 18px;
-      padding: 18px;
-    }
-
-    .hero-col {
-      display: grid;
-      gap: 10px;
-      align-content: start;
-    }
-
-    .main-image {
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      overflow: hidden;
-      background: #f8f4ea;
-      display: grid;
-      place-items: center;
-    }
-
-    .main-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .thumb-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-      gap: 8px;
-    }
-
-    .thumb {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      overflow: hidden;
-      background: #f8f4ea;
-      aspect-ratio: 1 / 1;
-    }
-
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .info-col {
-      display: grid;
-      align-content: start;
-      gap: 10px;
-    }
-
-    .kicker {
-      color: var(--muted);
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .title-en {
-      margin: 0;
-      font-size: 34px;
-      line-height: 1.1;
-      letter-spacing: 0.01em;
-    }
-
-    .title-az {
-      margin: 0;
-      color: var(--muted);
-      font-size: 17px;
-      line-height: 1.35;
-      font-weight: 600;
-    }
-
-    .price-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      margin-top: 2px;
-    }
-
-    .price-main {
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--accent-2);
-    }
-
-    .price-box {
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 13px;
-      color: #504b40;
-      background: #fff8ea;
-    }
-
-    .status {
-      display: inline-flex;
-      width: fit-content;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      padding: 6px 12px;
-      font-size: 13px;
-      font-weight: 700;
-      margin-top: 2px;
-    }
-
-    .status.in_stock { background: var(--good-bg); border-color: var(--good-line); color: var(--good-text); }
-    .status.out_of_stock { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-text); }
-    .status.preorder, .status.on_request, .status.unknown { background: var(--warm-bg); border-color: var(--warm-line); color: var(--warm-text); }
-
-    .desc {
-      margin: 2px 0 0;
-      color: #3e392f;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      border-left: 3px solid #ddcfaf;
-      padding-left: 10px;
-    }
-
-    .spec-grid {
-      margin: 2px 0 0;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .spec-item {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: #fffcf4;
-    }
-
-    .spec-item dt {
-      margin: 0;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .spec-item dd {
-      margin: 5px 0 0;
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 1.35;
-    }
-
-    .qr-block {
-      border-top: 1px dashed var(--line);
-      margin-top: 8px;
-      padding-top: 12px;
-    }
-
-    .qr-title {
-      margin: 0 0 8px;
-      font-size: 14px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-    }
-
-    .qr-wrap {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .qr-wrap svg {
-      width: 142px;
-      height: 142px;
-      border: 1px solid var(--line);
-      background: white;
-      border-radius: 8px;
-      padding: 6px;
-    }
-
-    .link a {
-      color: var(--accent);
-      font-weight: 700;
-      text-decoration: none;
-      word-break: break-all;
-    }
-
-    .link a:hover { text-decoration: underline; }
-
-    @media (max-width: 900px) {
-      .product-shell { grid-template-columns: 1fr; }
-      .title-en { font-size: 28px; }
-      .spec-grid { grid-template-columns: 1fr; }
-      .brand { font-size: 24px; }
-      .stamp { font-size: 11px; }
-    }
-  </style>
+  <style>${css}</style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <a class="brand" href="${homeHref}">HIGOLD Showroom</a>
-      <div class="stamp">Generated ${escapeHtml(generatedAt)}</div>
-    </header>
-    ${body}
-  </div>
+${body}
 </body>
 </html>`;
 }
+
+const PRODUCT_CSS = `
+:root {
+  --bg: #f1f3f8;
+  --card: #ffffff;
+  --ink: #111827;
+  --muted: #6b7280;
+  --line: #e6e8ee;
+  --ok-bg: #2ea96a;
+  --ok-ink: #ffffff;
+  --price: #0f172a;
+  --box-bg: #fff8e7;
+  --box-line: #f2d89a;
+  --box-ink: #7c4d00;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #ebedf4 0%, #f7f8fc 100%);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: var(--ink);
+  padding: 18px;
+}
+.wrap {
+  max-width: 560px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--card);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(17, 24, 39, 0.12);
+  border: 1px solid rgba(17, 24, 39, 0.05);
+}
+.media {
+  position: relative;
+  background: #0f1117;
+  min-height: 340px;
+  display: grid;
+  place-items: center;
+}
+.media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  min-height: 340px;
+}
+.status {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #111827;
+}
+.status.in_stock { background: var(--ok-bg); color: var(--ok-ink); }
+.status.out_of_stock { background: #ef4444; color: #fff; }
+.status.preorder, .status.on_request, .status.unknown { background: #f59e0b; color: #fff; }
+.content { padding: 18px 20px 20px; }
+.brand {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.name-en {
+  margin: 8px 0 4px;
+  font-size: 39px;
+  line-height: 1.06;
+  font-weight: 800;
+}
+.name-az {
+  margin: 0;
+  color: #4b5563;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.desc {
+  margin: 12px 0 0;
+  color: #374151;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.sec-title {
+  margin: 18px 0 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.spec-list {
+  display: grid;
+  gap: 8px;
+}
+.spec-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: #fafbff;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.spec-row .k { color: #374151; }
+.spec-row .v { color: #0f172a; font-weight: 700; text-align: right; }
+.divider {
+  margin: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.pricing {
+  display: grid;
+  gap: 12px;
+}
+.unit {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.unit .l {
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
+}
+.unit .v {
+  color: var(--price);
+  font-size: 46px;
+  font-weight: 900;
+  line-height: 1;
+}
+.box-price {
+  border: 1px solid var(--box-line);
+  background: var(--box-bg);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.box-price .l {
+  color: var(--box-ink);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 14px;
+}
+.box-price .hint {
+  color: var(--box-ink);
+  opacity: 0.85;
+  font-size: 13px;
+}
+.box-price .v {
+  color: var(--box-ink);
+  font-size: 33px;
+  font-weight: 900;
+  line-height: 1;
+}
+.meta {
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  body { padding: 10px; }
+  .name-en { font-size: 29px; }
+  .unit .v { font-size: 36px; }
+  .box-price .v { font-size: 28px; }
+}
+`;
+
+const ADMIN_CSS = `
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: #f7f8fb; color: #111827; }
+.main { max-width: 1100px; margin: 0 auto; padding: 20px 14px 28px; }
+.head { display: flex; justify-content: space-between; align-items: end; gap: 10px; margin-bottom: 14px; }
+.h1 { margin: 0; font-size: 28px; }
+.sub { color: #6b7280; font-size: 14px; margin-top: 4px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { display: inline-block; text-decoration: none; border: 1px solid #d9deea; background: white; color: #111827; border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+.tbl-wrap { background: white; border: 1px solid #e6e9f0; border-radius: 12px; overflow: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #edf0f5; font-size: 14px; }
+th { background: #f8f9fc; font-size: 13px; color: #374151; text-transform: uppercase; letter-spacing: 0.04em; }
+tr:hover td { background: #fafcff; }
+a { color: #0f5cc0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.badge.in_stock { background: #dcfce7; color: #166534; }
+.badge.out_of_stock { background: #fee2e2; color: #991b1b; }
+.badge.preorder, .badge.on_request, .badge.unknown { background: #fef3c7; color: #92400e; }
+`;
 
 async function fetchCsv(csvUrl, label) {
   const res = await fetch(csvUrl);
@@ -525,9 +450,7 @@ async function build() {
     const duplicateIndex = (seenIds.get(sourceId) || 0) + 1;
     seenIds.set(sourceId, duplicateIndex);
     const productId = duplicateIndex === 1 ? sourceId : `${sourceId}--${duplicateIndex}`;
-    if (duplicateIndex > 1) {
-      warnings.push(`Duplicate ITEM NO. \"${sourceId}\" -> generated \"${productId}\"`);
-    }
+    if (duplicateIndex > 1) warnings.push(`Duplicate ITEM NO. \"${sourceId}\" -> generated \"${productId}\"`);
 
     const urlBase = normalizePathId(productId);
     const urlIndex = (seenUrlIds.get(urlBase) || 0) + 1;
@@ -538,7 +461,6 @@ async function build() {
     if (!active) continue;
 
     const images = (imagesById.get(sourceId) || []).sort(compareImageRecords);
-    const mainImage = images.length > 0 ? images[0].url : "";
 
     products.push({
       product_id: productId,
@@ -560,7 +482,7 @@ async function build() {
       updated_at: String(row[productFields.updatedAt] || "").trim(),
       active: true,
       images: images.map((item) => item.url),
-      image_main: mainImage,
+      image_main: images.length ? images[0].url : "",
     });
   }
 
@@ -569,21 +491,26 @@ async function build() {
   const cleanBase = String(config.siteBaseUrl || "").replace(/\/+$/, "");
   await writeFile(path.join(outputDir, "data", "products.json"), JSON.stringify(products, null, 2));
 
-  const indexHtml = renderLayout({
-    title: "HIGOLD Showroom",
-    homeHref: "./index.html",
-    body: `<section class="card landing">
-  <h1>HIGOLD Showroom</h1>
-  <p>This page does not contain a public catalog.</p>
-  <p>Open product cards via QR code only.</p>
-</section>`,
-  });
+  const rootHtml = renderPage(
+    "HIGOLD Showroom",
+    `<main style="max-width:760px;margin:40px auto;padding:18px;background:white;border:1px solid #e8ebf3;border-radius:12px;font-family:Segoe UI,Tahoma,sans-serif;">
+      <h1 style="margin:0 0 10px;">HIGOLD Showroom</h1>
+      <p style="margin:6px 0;color:#4b5563;">Public catalog is disabled. Use product QR code to open each product card.</p>
+      <p style="margin:6px 0;color:#4b5563;">Admin QR page: <a href="./admin/qr/">/admin/qr/</a></p>
+    </main>`,
+    "body{margin:0;background:#f7f8fc;}a{color:#0f5cc0;}"
+  );
+  await writeFile(path.join(outputDir, "index.html"), rootHtml);
 
-  await writeFile(path.join(outputDir, "index.html"), indexHtml);
+  const adminRows = [];
+  const manifestRows = [["product_id", "url_id", "name", "product_url", "qr_svg_url"]];
 
   for (const product of products) {
     const productRelativePath = `p/${encodeURIComponent(product.url_id)}/`;
     const productUrl = `${cleanBase}/${productRelativePath}`;
+    const qrRelativePath = `qr/${encodeURIComponent(product.url_id)}.svg`;
+    const qrAbsoluteUrl = `${cleanBase}/${qrRelativePath}`;
+
     const qrSvg = await QRCode.toString(productUrl, {
       type: "svg",
       margin: 1,
@@ -593,68 +520,126 @@ async function build() {
 
     await writeFile(path.join(outputDir, "qr", `${encodeURIComponent(product.url_id)}.svg`), qrSvg);
 
-    const retailPrice = product.retail_price == null ? "Price on request" : `${product.retail_price.toFixed(2)} ${product.currency}`;
-    const boxPrice = product.box_price == null ? "" : `${product.box_price.toFixed(2)} ${product.currency}`;
+    const mainImageHtml = product.image_main
+      ? `<img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" />`
+      : "<div style=\"color:#9ca3af;font-weight:600;\">No image</div>";
 
-    const detailRows = [
+    const specRows = [
       ["Item No", product.item_no],
-      ["Manufacturer", product.manufacturer],
       ["Features", product.features],
       ["Inner Measures", product.inner_measures],
       ["Outer Measures", product.outer_measures],
-      ["Updated", product.updated_at],
+      ["Manufacturer", product.manufacturer],
     ]
       .filter(([, value]) => String(value || "").trim() !== "")
-      .map(([label, value]) => `<div class="spec-item"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+      .map(([k, v]) => `<div class="spec-row"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(v)}</span></div>`)
       .join("");
 
-    const allImages = product.images.length > 0 ? product.images : (product.image_main ? [product.image_main] : []);
-    const mainImage = product.image_main || allImages[0] || "";
+    const descriptionHtml = product.description ? `<p class="desc">${escapeHtml(product.description)}</p>` : "";
+    const nameAzHtml = product.name_az ? `<p class="name-az">${escapeHtml(product.name_az)}</p>` : "";
+    const unitPrice = product.retail_price != null ? formatMoney(product.retail_price, product.currency) : "Price on request";
 
-    const mainImageHtml = mainImage
-      ? `<div class="main-image"><img src="${escapeHtml(mainImage)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`
-      : `<div class="main-image"><div class="meta">No image</div></div>`;
-
-    const thumbsHtml = allImages.length > 1
-      ? `<div class="thumb-row">${allImages.map((img) => `<div class="thumb"><img src="${escapeHtml(img)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`).join("")}</div>`
+    const boxPriceHtml = product.box_price != null
+      ? `<div class="box-price">
+          <div>
+            <div class="l">Box Price</div>
+            <div class="hint">Only for selected categories</div>
+          </div>
+          <div class="v">${escapeHtml(formatMoney(product.box_price, product.currency))}</div>
+        </div>`
       : "";
 
-    const azNameHtml = product.name_az ? `<p class="title-az">${escapeHtml(product.name_az)}</p>` : "";
-    const descriptionHtml = product.description ? `<p class="desc">${escapeHtml(product.description)}</p>` : "";
-    const boxPriceHtml = boxPrice ? `<span class="price-box">Box Price: ${escapeHtml(boxPrice)}</span>` : "";
-
-    const pageHtml = renderLayout({
-      title: `${product.product_id} - ${product.name}`,
-      homeHref: "../../index.html",
-      body: `<article class="card product-shell">
-  <section class="hero-col">
-    ${mainImageHtml}
-    ${thumbsHtml}
-  </section>
-  <section class="info-col">
-    <div class="kicker">Product ID: ${escapeHtml(product.product_id)}</div>
-    <h1 class="title-en">${escapeHtml(product.name || product.product_id)}</h1>
-    ${azNameHtml}
-    <div class="status ${escapeHtml(product.stock_status)}">${escapeHtml(product.stock_label || product.stock_status)}</div>
-    <div class="price-row">
-      <div class="price-main">${escapeHtml(retailPrice)}</div>
-      ${boxPriceHtml}
+    const productHtml = renderPage(
+      `${product.product_id} - ${product.name}`,
+      `<div class="wrap">
+  <article class="card">
+    <div class="media">
+      ${mainImageHtml}
+      <div class="status ${escapeHtml(product.stock_status)}">${escapeHtml(product.stock_label || product.stock_status)}</div>
     </div>
-    ${descriptionHtml}
-    <dl class="spec-grid">${detailRows}</dl>
-    <div class="qr-block">
-      <p class="qr-title">Product QR Link</p>
-      <div class="qr-wrap">
-        ${qrSvg}
-        <p class="link"><a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener">${escapeHtml(productUrl)}</a></p>
+    <div class="content">
+      <p class="brand">${escapeHtml(product.manufacturer || "HIGOLD")}</p>
+      <h1 class="name-en">${escapeHtml(product.name || product.product_id)}</h1>
+      ${nameAzHtml}
+      ${descriptionHtml}
+
+      ${specRows ? `<h3 class="sec-title">Features</h3><div class="spec-list">${specRows}</div>` : ""}
+
+      <div class="divider"></div>
+
+      <div class="pricing">
+        <div class="unit">
+          <div class="l">Unit Price</div>
+          <div class="v">${escapeHtml(unitPrice)}</div>
+        </div>
+        ${boxPriceHtml}
       </div>
-    </div>
-  </section>
-</article>`,
-    });
 
-    await writeFile(path.join(outputDir, "p", product.url_id, "index.html"), pageHtml);
+      <div class="meta">Product ID: ${escapeHtml(product.product_id)}</div>
+    </div>
+  </article>
+</div>`,
+      PRODUCT_CSS
+    );
+
+    await writeFile(path.join(outputDir, "p", product.url_id, "index.html"), productHtml);
+
+    adminRows.push(`<tr>
+  <td>${escapeHtml(product.product_id)}</td>
+  <td>${escapeHtml(product.name || "")}</td>
+  <td><span class="badge ${escapeHtml(product.stock_status)}">${escapeHtml(product.stock_label || product.stock_status)}</span></td>
+  <td><a href="../../${escapeHtml(productRelativePath)}" target="_blank" rel="noopener">Open Card</a></td>
+  <td><a href="../../${escapeHtml(qrRelativePath)}" target="_blank" rel="noopener">Open QR</a></td>
+  <td><a href="../../${escapeHtml(qrRelativePath)}" download>Download SVG</a></td>
+</tr>`);
+
+    manifestRows.push([
+      product.product_id,
+      product.url_id,
+      product.name,
+      productUrl,
+      qrAbsoluteUrl,
+    ]);
   }
+
+  const adminHtml = renderPage(
+    "Admin QR Index",
+    `<main class="main">
+  <div class="head">
+    <div>
+      <h1 class="h1">Admin QR Index</h1>
+      <div class="sub">Total products: ${products.length}. You can open or download each QR SVG.</div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="../qr-manifest.csv" download>Download manifest CSV</a>
+      <a class="btn" href="../../index.html">Home</a>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Product ID</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Card</th>
+          <th>QR</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${adminRows.join("\n")}
+      </tbody>
+    </table>
+  </div>
+</main>`,
+    ADMIN_CSS
+  );
+
+  await writeFile(path.join(outputDir, "admin", "qr", "index.html"), adminHtml);
+
+  const manifestCsv = manifestRows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  await writeFile(path.join(outputDir, "admin", "qr-manifest.csv"), `${manifestCsv}\n`);
 
   for (const warning of warnings) {
     console.warn(`Warning: ${warning}`);

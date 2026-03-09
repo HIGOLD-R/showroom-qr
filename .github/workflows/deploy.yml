@@ -42,6 +42,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Upload QR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qr-codes-svg
+          path: dist/qr
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

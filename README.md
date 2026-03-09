@@ -69,8 +69,12 @@ After first push:
 2. Ensure source is `GitHub Actions`.
 3. Run action `Build and Deploy Pages`.
 
+## Admin QR access
+- QR admin page: `/admin/qr/`
+- Manifest file: `/admin/qr-manifest.csv`
+- Download all QR at once: in GitHub Actions run artifacts (`qr-codes-svg`).
+
 ## Notes
 - Public site uses only status, not exact stock quantity.
 - Product URL is stable and based on `ITEM NO.`.
 - If one item has multiple images, main image is selected by `is_main`, then `sort_order`.
-
