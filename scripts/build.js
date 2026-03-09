@@ -167,30 +167,289 @@ function renderLayout({ title, body, homeHref }) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
   <style>
-    :root { --bg: #f4efe4; --surface: #fffdf8; --text: #22201c; --muted: #6a665d; --line: #e6dece; --accent: #2f7a5e; }
+    :root {
+      --bg: #efe9db;
+      --bg2: #e4dbc8;
+      --surface: #fffdf7;
+      --ink: #1f1e1a;
+      --muted: #6f6b60;
+      --line: #e1d7bf;
+      --accent: #206a4f;
+      --accent-2: #124131;
+      --good-bg: #e4f6e8;
+      --good-line: #bee1c5;
+      --good-text: #18552a;
+      --bad-bg: #fbe4e4;
+      --bad-line: #f0c2c2;
+      --bad-text: #7e2323;
+      --warm-bg: #fff3db;
+      --warm-line: #efd9a7;
+      --warm-text: #785400;
+    }
+
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: linear-gradient(180deg, #ece4d4 0%, var(--bg) 220px); color: var(--text); }
-    .page { max-width: 1080px; margin: 0 auto; padding: 24px 16px 40px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .brand { color: var(--text); text-decoration: none; font-weight: 700; letter-spacing: 0.02em; }
-    .stamp { color: var(--muted); font-size: 13px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
-    .card h2, .card h1 { margin: 0 0 8px; font-size: 18px; line-height: 1.3; }
-    .meta { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
-    .price { font-size: 18px; font-weight: 700; margin-top: 6px; }
-    .status { display: inline-block; margin-top: 8px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
-    .status.in_stock { background: #e4f6e6; border-color: #bde4c2; color: #195b21; }
-    .status.out_of_stock { background: #fbe5e5; border-color: #f3c2c2; color: #832323; }
-    .status.preorder, .status.on_request { background: #fff5dc; border-color: #f2dfab; color: #795200; }
-    .details { margin-top: 10px; display: grid; grid-template-columns: 1fr; gap: 8px; }
-    .details dt { color: var(--muted); font-size: 13px; }
-    .details dd { margin: 2px 0 0; }
-    .image-wrap { width: 100%; aspect-ratio: 4/3; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #faf6ee; display: grid; place-items: center; }
-    .image-wrap img { width: 100%; height: 100%; object-fit: contain; }
-    .actions a { color: var(--accent); text-decoration: none; font-weight: 600; }
-    .actions a:hover { text-decoration: underline; }
-    .qr svg { width: 180px; height: 180px; }
+
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(255,255,255,0.5), transparent 32%),
+        linear-gradient(180deg, var(--bg2), var(--bg));
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 22px 14px 36px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    .brand {
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-size: 30px;
+    }
+
+    .stamp {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 26px rgba(66, 54, 25, 0.08);
+    }
+
+    .landing {
+      padding: 26px;
+    }
+
+    .landing h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .landing p {
+      margin: 6px 0;
+      color: var(--muted);
+    }
+
+    .product-shell {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .hero-col {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .main-image {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f8f4ea;
+      display: grid;
+      place-items: center;
+    }
+
+    .main-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .thumb-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+      gap: 8px;
+    }
+
+    .thumb {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f8f4ea;
+      aspect-ratio: 1 / 1;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .info-col {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .kicker {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .title-en {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+    }
+
+    .title-az {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+
+    .price-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .price-main {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent-2);
+    }
+
+    .price-box {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 13px;
+      color: #504b40;
+      background: #fff8ea;
+    }
+
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .status.in_stock { background: var(--good-bg); border-color: var(--good-line); color: var(--good-text); }
+    .status.out_of_stock { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-text); }
+    .status.preorder, .status.on_request, .status.unknown { background: var(--warm-bg); border-color: var(--warm-line); color: var(--warm-text); }
+
+    .desc {
+      margin: 2px 0 0;
+      color: #3e392f;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      border-left: 3px solid #ddcfaf;
+      padding-left: 10px;
+    }
+
+    .spec-grid {
+      margin: 2px 0 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .spec-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fffcf4;
+    }
+
+    .spec-item dt {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .spec-item dd {
+      margin: 5px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .qr-block {
+      border-top: 1px dashed var(--line);
+      margin-top: 8px;
+      padding-top: 12px;
+    }
+
+    .qr-title {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .qr-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .qr-wrap svg {
+      width: 142px;
+      height: 142px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 8px;
+      padding: 6px;
+    }
+
+    .link a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .link a:hover { text-decoration: underline; }
+
+    @media (max-width: 900px) {
+      .product-shell { grid-template-columns: 1fr; }
+      .title-en { font-size: 28px; }
+      .spec-grid { grid-template-columns: 1fr; }
+      .brand { font-size: 24px; }
+      .stamp { font-size: 11px; }
+    }
   </style>
 </head>
 <body>
@@ -308,13 +567,15 @@ async function build() {
   await ensureCleanOutput(outputDir);
 
   const cleanBase = String(config.siteBaseUrl || "").replace(/\/+$/, "");
-  await writeFile(path.join(outputDir, "data", "products.json"), JSON.stringify(products, null, 2));  const indexHtml = renderLayout({
+  await writeFile(path.join(outputDir, "data", "products.json"), JSON.stringify(products, null, 2));
+
+  const indexHtml = renderLayout({
     title: "HIGOLD Showroom",
     homeHref: "./index.html",
-    body: `<section class="card">
+    body: `<section class="card landing">
   <h1>HIGOLD Showroom</h1>
-  <p>This landing page is intentionally minimal.</p>
-  <p>Use product QR code to open a specific product card.</p>
+  <p>This page does not contain a public catalog.</p>
+  <p>Open product cards via QR code only.</p>
 </section>`,
   });
 
@@ -332,41 +593,63 @@ async function build() {
 
     await writeFile(path.join(outputDir, "qr", `${encodeURIComponent(product.url_id)}.svg`), qrSvg);
 
+    const retailPrice = product.retail_price == null ? "Price on request" : `${product.retail_price.toFixed(2)} ${product.currency}`;
+    const boxPrice = product.box_price == null ? "" : `${product.box_price.toFixed(2)} ${product.currency}`;
+
     const detailRows = [
       ["Item No", product.item_no],
-      ["Name AZ", product.name_az],
       ["Manufacturer", product.manufacturer],
       ["Features", product.features],
       ["Inner Measures", product.inner_measures],
       ["Outer Measures", product.outer_measures],
-      ["Retail Price", product.retail_price == null ? "" : `${product.retail_price.toFixed(2)} ${product.currency}`],
-      ["Box Price", product.box_price == null ? "" : `${product.box_price.toFixed(2)} ${product.currency}`],
-      ["Status", product.stock_label],
       ["Updated", product.updated_at],
     ]
       .filter(([, value]) => String(value || "").trim() !== "")
-      .map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+      .map(([label, value]) => `<div class="spec-item"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
       .join("");
 
-    const imageHtml = product.image_main
-      ? `<div class="image-wrap"><img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`
+    const allImages = product.images.length > 0 ? product.images : (product.image_main ? [product.image_main] : []);
+    const mainImage = product.image_main || allImages[0] || "";
+
+    const mainImageHtml = mainImage
+      ? `<div class="main-image"><img src="${escapeHtml(mainImage)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`
+      : `<div class="main-image"><div class="meta">No image</div></div>`;
+
+    const thumbsHtml = allImages.length > 1
+      ? `<div class="thumb-row">${allImages.map((img) => `<div class="thumb"><img src="${escapeHtml(img)}" alt="${escapeHtml(product.name || product.product_id)}" /></div>`).join("")}</div>`
       : "";
-    const descriptionHtml = product.description ? `<p>${escapeHtml(product.description)}</p>` : "";
+
+    const azNameHtml = product.name_az ? `<p class="title-az">${escapeHtml(product.name_az)}</p>` : "";
+    const descriptionHtml = product.description ? `<p class="desc">${escapeHtml(product.description)}</p>` : "";
+    const boxPriceHtml = boxPrice ? `<span class="price-box">Box Price: ${escapeHtml(boxPrice)}</span>` : "";
 
     const pageHtml = renderLayout({
       title: `${product.product_id} - ${product.name}`,
       homeHref: "../../index.html",
-      body: `<article class="card">
-  ${imageHtml}
-  <h1>${escapeHtml(product.name || product.product_id)}</h1>
-  <div class="meta">${escapeHtml(product.product_id)}</div>
-  ${descriptionHtml}
-  <dl class="details">${detailRows}</dl>
-  <div class="qr">
-    <h3>QR</h3>
-    ${qrSvg}
-    <p class="actions"><a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener">${escapeHtml(productUrl)}</a></p>
-  </div>
+      body: `<article class="card product-shell">
+  <section class="hero-col">
+    ${mainImageHtml}
+    ${thumbsHtml}
+  </section>
+  <section class="info-col">
+    <div class="kicker">Product ID: ${escapeHtml(product.product_id)}</div>
+    <h1 class="title-en">${escapeHtml(product.name || product.product_id)}</h1>
+    ${azNameHtml}
+    <div class="status ${escapeHtml(product.stock_status)}">${escapeHtml(product.stock_label || product.stock_status)}</div>
+    <div class="price-row">
+      <div class="price-main">${escapeHtml(retailPrice)}</div>
+      ${boxPriceHtml}
+    </div>
+    ${descriptionHtml}
+    <dl class="spec-grid">${detailRows}</dl>
+    <div class="qr-block">
+      <p class="qr-title">Product QR Link</p>
+      <div class="qr-wrap">
+        ${qrSvg}
+        <p class="link"><a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener">${escapeHtml(productUrl)}</a></p>
+      </div>
+    </div>
+  </section>
 </article>`,
     });
 
