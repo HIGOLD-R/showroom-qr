@@ -272,12 +272,15 @@ const PRODUCT_CSS = `
   --ok: #22a26d;
 }
 * { box-sizing: border-box; }
-body {
+html, body {
   margin: 0;
+  min-height: 100%;
   background: radial-gradient(1200px 600px at top left, #f5f7fb, #e7ebf3);
+}
+body {
   font-family: "Segoe UI", Tahoma, sans-serif;
   color: var(--ink);
-  padding: 20px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
 }
 .wrap { max-width: 560px; margin: 0 auto; }
 .card {
@@ -394,7 +397,7 @@ body {
 .box-price .v { color: #7a4a00; font-size: 34px; line-height: 1; font-weight: 900; }
 .meta { margin-top: 12px; font-size: 13px; color: #64748b; }
 @media (max-width: 640px) {
-  body { padding: 10px; }
+  body { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
   .name-en { font-size: 30px; }
   .unit .v { font-size: 39px; }
   .box-price .v { font-size: 29px; }
@@ -541,8 +544,7 @@ async function build() {
     `<main style="max-width:760px;margin:40px auto;padding:18px;background:white;border:1px solid #e8ebf3;border-radius:12px;font-family:Segoe UI,Tahoma,sans-serif;">
       <h1 style="margin:0 0 10px;">HIGOLD Showroom</h1>
       <p style="margin:6px 0;color:#4b5563;">Public catalog is disabled. Use product QR code to open each product card.</p>
-      <p style="margin:6px 0;color:#4b5563;">Admin QR page: <a href="./admin/qr/">/admin/qr/</a></p>
-    </main>`,
+          </main>`,
     "body{margin:0;background:#f7f8fc;}a{color:#0f5cc0;}"
   );
   await writeFile(path.join(outputDir, "index.html"), rootHtml);
