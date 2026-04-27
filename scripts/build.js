@@ -239,6 +239,7 @@ async function ensureCleanOutput(outputDir) {
   await fs.mkdir(path.join(outputDir, "data"), { recursive: true });
   await fs.mkdir(path.join(outputDir, "p"), { recursive: true });
   await fs.mkdir(path.join(outputDir, "qr"), { recursive: true });
+  await fs.mkdir(path.join(outputDir, "print"), { recursive: true });
   await fs.mkdir(path.join(outputDir, "admin", "qr"), { recursive: true });
 }
 
@@ -426,6 +427,70 @@ a:hover { text-decoration: underline; }
 .badge.preorder, .badge.on_request, .badge.unknown { background: #fef3c7; color: #92400e; }
 `;
 
+const PRINT_CSS = `
+@page {
+  size: 40mm 40mm;
+  margin: 0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+body {
+  font-family: Arial, sans-serif;
+}
+.label {
+  width: 40mm;
+  height: 40mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5mm;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
+}
+.qr {
+  width: 27mm;
+  height: 27mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qr svg {
+  width: 27mm;
+  height: 27mm;
+  display: block;
+}
+.code {
+  max-width: 36mm;
+  font-size: 9pt;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand {
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+@media screen {
+  body { background: #e5e7eb; padding: 12px; }
+  .label {
+    margin: 0 auto 12px;
+    background: white;
+    border: 1px dashed #cbd5e1;
+  }
+}
+`;
+
 async function fetchCsv(csvUrl, label) {
   const res = await fetch(csvUrl);
   if (!res.ok) throw new Error(`Failed to fetch ${label}: ${res.status} ${res.statusText}`);
@@ -551,6 +616,7 @@ async function build() {
 
   const adminRows = [];
   const manifestRows = [["product_id", "url_id", "name", "product_url", "qr_svg_url"]];
+  const printLabels = [];
 
   for (const product of products) {
     const productRelativePath = `p/${encodeURIComponent(product.url_id)}/`;
@@ -566,6 +632,11 @@ async function build() {
     });
 
     await writeFile(path.join(outputDir, "qr", `${encodeURIComponent(product.url_id)}.svg`), qrSvg);
+    printLabels.push(`<section class="label">
+  <div class="brand">HIGOLD</div>
+  <div class="qr">${qrSvg}</div>
+  <div class="code">${escapeHtml(product.item_no)}</div>
+</section>`);
 
     const mainImageHtml = product.image_main
       ? `<img src="${escapeHtml(product.image_main)}" alt="${escapeHtml(product.name || product.product_id)}" referrerpolicy="no-referrer" loading="eager" onerror="if(!this.dataset.f){const m=this.src.match(/[?&]id=([^&]+)/);if(m){this.dataset.f='1';this.src='https://drive.google.com/uc?export=view&id='+m[1];}}" />`
@@ -657,6 +728,7 @@ async function build() {
     </div>
     <div class="actions">
       <a class="btn" href="../qr-manifest.csv" download>Download manifest CSV</a>
+      <a class="btn" href="../../print/qr-labels-40x40.html" target="_blank" rel="noopener">Print 40x40 Labels</a>
       <a class="btn" href="../../index.html">Home</a>
     </div>
   </div>
@@ -685,6 +757,13 @@ async function build() {
 
   const manifestCsv = manifestRows.map((row) => row.map(csvEscape).join(",")).join("\n");
   await writeFile(path.join(outputDir, "admin", "qr-manifest.csv"), `${manifestCsv}\n`);
+
+  const printHtml = renderPage(
+    "HIGOLD QR Labels 40x40",
+    printLabels.join("\n"),
+    PRINT_CSS
+  );
+  await writeFile(path.join(outputDir, "print", "qr-labels-40x40.html"), printHtml);
 
   for (const warning of warnings) {
     console.warn(`Warning: ${warning}`);
