@@ -433,6 +433,12 @@ const PRINT_CSS = `
   margin: 0;
 }
 * { box-sizing: border-box; }
+:root {
+  --label-w: 40mm;
+  --label-h: 40mm;
+  --qr-size: 27mm;
+  --code-width: 36mm;
+}
 html, body {
   margin: 0;
   padding: 0;
@@ -441,9 +447,12 @@ html, body {
 body {
   font-family: Arial, sans-serif;
 }
+.toolbar {
+  display: none;
+}
 .label {
-  width: 40mm;
-  height: 40mm;
+  width: var(--label-w);
+  height: var(--label-h);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -454,19 +463,19 @@ body {
   overflow: hidden;
 }
 .qr {
-  width: 27mm;
-  height: 27mm;
+  width: var(--qr-size);
+  height: var(--qr-size);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .qr svg {
-  width: 27mm;
-  height: 27mm;
+  width: var(--qr-size);
+  height: var(--qr-size);
   display: block;
 }
 .code {
-  max-width: 36mm;
+  max-width: var(--code-width);
   font-size: 9pt;
   font-weight: 700;
   line-height: 1.05;
@@ -483,6 +492,34 @@ body {
 }
 @media screen {
   body { background: #e5e7eb; padding: 12px; }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    max-width: 760px;
+    margin: 0 auto 12px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font: 14px Arial, sans-serif;
+  }
+  .toolbar input {
+    width: 72px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+  }
+  .toolbar button, .toolbar a {
+    padding: 7px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    text-decoration: none;
+    cursor: pointer;
+  }
   .label {
     margin: 0 auto 12px;
     background: white;
@@ -728,10 +765,17 @@ async function build() {
     </div>
     <div class="actions">
       <a class="btn" href="../qr-manifest.csv" download>Download manifest CSV</a>
-      <a class="btn" href="../../print/qr-labels-40x40.html" target="_blank" rel="noopener">Print 40x40 Labels</a>
+      <a class="btn" href="../../print/qr-labels.html?w=40&h=40" target="_blank" rel="noopener">Print 40x40</a>
+      <a class="btn" href="../../print/qr-labels.html?w=40&h=60" target="_blank" rel="noopener">Print 40x60</a>
+      <a class="btn" href="../../print/qr-labels.html?w=50&h=30" target="_blank" rel="noopener">Print 50x30</a>
       <a class="btn" href="../../index.html">Home</a>
     </div>
   </div>
+  <form class="actions" style="margin-bottom: 14px;" action="../../print/qr-labels.html" method="get" target="_blank">
+    <input name="w" type="number" min="20" max="100" value="40" style="width: 90px; padding: 8px 10px; border: 1px solid #d9deea; border-radius: 10px;" />
+    <input name="h" type="number" min="20" max="100" value="40" style="width: 90px; padding: 8px 10px; border: 1px solid #d9deea; border-radius: 10px;" />
+    <button class="btn" type="submit">Open custom size</button>
+  </form>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -758,11 +802,50 @@ async function build() {
   const manifestCsv = manifestRows.map((row) => row.map(csvEscape).join(",")).join("\n");
   await writeFile(path.join(outputDir, "admin", "qr-manifest.csv"), `${manifestCsv}\n`);
 
-  const printHtml = renderPage(
-    "HIGOLD QR Labels 40x40",
-    printLabels.join("\n"),
-    PRINT_CSS
-  );
+  const printBody = `<div class="toolbar">
+  <strong>QR labels</strong>
+  <label>W mm <input id="label-w" type="number" min="20" max="100" value="40" /></label>
+  <label>H mm <input id="label-h" type="number" min="20" max="100" value="40" /></label>
+  <button type="button" onclick="applySize()">Apply</button>
+  <button type="button" onclick="window.print()">Print</button>
+  <a href="?w=40&h=40">40x40</a>
+  <a href="?w=40&h=60">40x60</a>
+  <a href="?w=50&h=30">50x30</a>
+</div>
+<style id="dynamic-page-size"></style>
+${printLabels.join("\n")}
+<script>
+function readSize() {
+  const params = new URLSearchParams(window.location.search);
+  const w = Math.max(20, Math.min(100, Number(params.get("w") || 40)));
+  const h = Math.max(20, Math.min(100, Number(params.get("h") || 40)));
+  return { w, h };
+}
+function setSize(w, h) {
+  const qr = Math.max(16, Math.min(w - 8, h - 11));
+  document.documentElement.style.setProperty("--label-w", w + "mm");
+  document.documentElement.style.setProperty("--label-h", h + "mm");
+  document.documentElement.style.setProperty("--qr-size", qr + "mm");
+  document.documentElement.style.setProperty("--code-width", Math.max(18, w - 4) + "mm");
+  document.getElementById("dynamic-page-size").textContent = "@page { size: " + w + "mm " + h + "mm; margin: 0; }";
+  document.getElementById("label-w").value = w;
+  document.getElementById("label-h").value = h;
+  document.title = "HIGOLD QR Labels " + w + "x" + h;
+}
+function applySize() {
+  const w = Number(document.getElementById("label-w").value || 40);
+  const h = Number(document.getElementById("label-h").value || 40);
+  const next = new URL(window.location.href);
+  next.searchParams.set("w", w);
+  next.searchParams.set("h", h);
+  window.history.replaceState(null, "", next);
+  setSize(w, h);
+}
+setSize(readSize().w, readSize().h);
+</script>`;
+
+  const printHtml = renderPage("HIGOLD QR Labels", printBody, PRINT_CSS);
+  await writeFile(path.join(outputDir, "print", "qr-labels.html"), printHtml);
   await writeFile(path.join(outputDir, "print", "qr-labels-40x40.html"), printHtml);
 
   for (const warning of warnings) {
