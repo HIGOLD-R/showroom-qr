@@ -503,10 +503,10 @@ body {
 .is-compact .code {
   display: block;
   position: absolute;
-  right: 0.8mm;
+  right: 0.2mm;
   top: 50%;
-  width: calc(var(--label-h) - 2mm);
-  max-width: calc(var(--label-h) - 2mm);
+  width: calc(var(--label-h) - 1mm);
+  max-width: calc(var(--label-h) - 1mm);
   font-size: 5pt;
   line-height: 1;
   transform: translateY(-50%) rotate(90deg);
