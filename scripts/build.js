@@ -438,6 +438,9 @@ const PRINT_CSS = `
   --label-h: 40mm;
   --qr-size: 27mm;
   --code-width: 36mm;
+  --label-gap: 1.5mm;
+  --brand-size: 6pt;
+  --code-size: 9pt;
 }
 html, body {
   margin: 0;
@@ -457,7 +460,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5mm;
+  gap: var(--label-gap);
   page-break-after: always;
   break-after: page;
   overflow: hidden;
@@ -476,7 +479,7 @@ body {
 }
 .code {
   max-width: var(--code-width);
-  font-size: 9pt;
+  font-size: var(--code-size);
   font-weight: 700;
   line-height: 1.05;
   text-align: center;
@@ -485,10 +488,17 @@ body {
   text-overflow: ellipsis;
 }
 .brand {
-  font-size: 6pt;
+  font-size: var(--brand-size);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-align: center;
+}
+.is-compact .brand,
+.is-compact .code {
+  display: none;
+}
+.is-compact .label {
+  gap: 0;
 }
 @media screen {
   body { background: #e5e7eb; padding: 12px; }
@@ -822,11 +832,18 @@ function readSize() {
   return { w, h };
 }
 function setSize(w, h) {
-  const qr = Math.max(16, Math.min(w - 8, h - 11));
+  const compact = h < 26;
+  const qr = compact
+    ? Math.max(10, Math.min(w - 4, h - 4))
+    : Math.max(14, Math.min(w - 8, h - 12));
   document.documentElement.style.setProperty("--label-w", w + "mm");
   document.documentElement.style.setProperty("--label-h", h + "mm");
   document.documentElement.style.setProperty("--qr-size", qr + "mm");
   document.documentElement.style.setProperty("--code-width", Math.max(18, w - 4) + "mm");
+  document.documentElement.style.setProperty("--brand-size", h < 32 ? "5pt" : "6pt");
+  document.documentElement.style.setProperty("--code-size", h < 32 ? "7pt" : "9pt");
+  document.documentElement.style.setProperty("--label-gap", h < 32 ? "0.7mm" : "1.5mm");
+  document.body.classList.toggle("is-compact", compact);
   document.getElementById("dynamic-page-size").textContent = "@page { size: " + w + "mm " + h + "mm; margin: 0; }";
   document.getElementById("label-w").value = w;
   document.getElementById("label-h").value = h;
