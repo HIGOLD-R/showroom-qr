@@ -456,6 +456,7 @@ body {
 .label {
   width: var(--label-w);
   height: var(--label-h);
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -493,12 +494,24 @@ body {
   letter-spacing: 0.08em;
   text-align: center;
 }
-.is-compact .brand,
-.is-compact .code {
+.is-compact .brand {
   display: none;
 }
 .is-compact .label {
   gap: 0;
+}
+.is-compact .code {
+  display: block;
+  position: absolute;
+  right: 0.8mm;
+  top: 50%;
+  width: calc(var(--label-h) - 2mm);
+  max-width: calc(var(--label-h) - 2mm);
+  font-size: 5pt;
+  line-height: 1;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+  text-align: center;
 }
 @media screen {
   body { background: #e5e7eb; padding: 12px; }
@@ -834,7 +847,7 @@ function readSize() {
 function setSize(w, h) {
   const compact = h < 26;
   const qr = compact
-    ? Math.max(10, Math.min(w - 4, h - 4))
+    ? Math.max(10, Math.min(w - 8, h - 4))
     : Math.max(14, Math.min(w - 8, h - 12));
   document.documentElement.style.setProperty("--label-w", w + "mm");
   document.documentElement.style.setProperty("--label-h", h + "mm");
